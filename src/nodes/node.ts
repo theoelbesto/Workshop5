@@ -45,8 +45,10 @@ export async function node(
 
   async function benOrRound() {
     if (state.killed || isFaulty) return;
+    
     await broadcast(1, state.k!, state.x!);
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise(resolve => setTimeout(resolve, 0)); // reduced delay to 0ms
+
     const phase1Messages = messagesPhase1.filter(m => m.round === state.k);
     const counts1 = { 0: 0, 1: 0 };
     phase1Messages.forEach(msg => {
@@ -54,6 +56,7 @@ export async function node(
         counts1[msg.value]++;
       }
     });
+    
     let proposedValue: Value;
     const quorum = Math.floor((N + 1) / 2);
     if (counts1[1] >= quorum) {
@@ -63,8 +66,10 @@ export async function node(
     } else {
       proposedValue = 1;
     }
+    
     await broadcast(2, state.k!, proposedValue);
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise(resolve => setTimeout(resolve, 0)); // reduced delay to 0ms
+
     const phase2Messages = messagesPhase2.filter(m => m.round === state.k);
     const counts2 = { 0: 0, 1: 0 };
     phase2Messages.forEach(msg => {
@@ -72,6 +77,7 @@ export async function node(
         counts2[msg.value]++;
       }
     });
+    
     const consensusThreshold = Math.ceil((N - F) / 2);
     if (F * 2 < N) {
       if (counts2[1] >= consensusThreshold) {
@@ -88,9 +94,15 @@ export async function node(
       state.x = proposedValue;
       state.decided = false;
     }
+    
     state.k!++;
+    
+    // Clear messages from the completed round
+    messagesPhase1 = messagesPhase1.filter(m => m.round > state.k!);
+    messagesPhase2 = messagesPhase2.filter(m => m.round > state.k!);
+    
     if (!state.decided) {
-      setTimeout(benOrRound, 10);
+      setImmediate(benOrRound);
     }
   }
 
